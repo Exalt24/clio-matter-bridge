@@ -1,6 +1,6 @@
 # clio-matter-bridge
 
-**A Clio Manage integration built by measuring the platform instead of trusting its documentation.** OAuth 2.0 with refresh, a rate-limit-aware paginating client, a webhook receiver verified against real deliveries, and a confidentiality boundary for anything that reaches a language model.
+**A Clio Manage integration built by measuring the platform rather than assuming it.** OAuth 2.0 with refresh, a rate-limit-aware paginating client, a webhook receiver verified against real deliveries, and a confidentiality boundary for anything that reaches a language model.
 
 ![Terminal showing all five test suites and three mutation controls passing, ending in ALL SUITES PASS](assets/tests.gif)
 
@@ -25,20 +25,20 @@ Built and tested against a live Clio Manage **developer trial** account. Not run
 
 ## Why this exists
 
-Clio's documentation is wrong or missing in ways that matter, and every wrong assumption here was found by hitting the real API rather than reading about it.
+Some of Clio's documentation is missing or hard to find, and several of my own assumptions were wrong. Both kinds of error were found by hitting the real API rather than reading about it. One correction runs the other way, and it is in the table below: I briefly believed the documented rate limit was wrong, and it was not.
 
-![Terminal output showing five consecutive API reads with X-RateLimit-Limit of 600, contradicting Clio's documented 50 per minute](assets/measured-vs-documented.png)
+![Terminal output showing five consecutive API reads reporting X-RateLimit-Limit of 600, an off-peak reading that later dropped to 50 at peak](assets/measured-vs-documented.png)
 
 | Behaviour | Documented | Measured |
 |---|---|---|
-| Rate limit | 50 requests/minute | `X-RateLimit-Limit: 600`, `Reset` a minute-aligned unix instant, so **600/min** |
+| Rate limit | 50/min at peak, "increased during off-peak hours" | **varies**: observed 600 in the morning and 50 the same afternoon. The docs were right; read the header |
 | Webhook contract | the docs page 404s | reverse-engineered from validation errors, then proven end to end |
 | Redirect URI | not stated | the portal rejects `localhost`; requires `https` or `http://127.0.0.1` |
 | Offset pagination | 10,000-record ceiling | confirmed, 422 past it, so paging here is cursor-only |
 | `fields` omitted | "minimal default set" | confirmed: `description` is simply absent unless asked for |
 | Manage OAuth host | ambiguous vs Platform | `app.clio.com/oauth/*`; `auth.api.clio.com` is a different product |
 
-The rate limit alone mattered: the client had been pacing at 50/min and was therefore **twelve times slower than necessary**.
+The rate limit is the one that taught me most, because I got it wrong first. Seeing 600 once, I declared the documented 50 incorrect and hardcoded the faster pace. Later the same day the header read 50, which is peak, exactly as documented. **A single reading of a varying value is not a measurement.** The client now derives its pacing from `X-RateLimit-Limit` on every response and keeps a third of the budget as headroom.
 
 ## Webhooks, proven rather than assumed
 

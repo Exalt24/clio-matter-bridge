@@ -3,11 +3,12 @@ import { ClioClient } from './lib/clio-client.mjs';
 
 // Second probe. Two questions the docs answer wrongly or not at all:
 //
-// 1. THE REAL RATE LIMIT. Clio's docs say 50 requests/minute. The observed
-//    X-RateLimit-Limit header says 600. Those imply very different pacing, and
-//    getting it wrong either wastes hours or gets an integration throttled. A
-//    single reading cannot distinguish "600 per minute" from "600 per hour",
-//    so this takes several readings and watches how Remaining and Reset move.
+// 1. THE RATE LIMIT, WHICH VARIES. Clio documents 50 requests/minute at peak
+//    and says limits are increased off-peak. Observed on one account: 600 in
+//    the morning, 50 the same afternoon. Both agree with the docs. A single
+//    reading cannot tell you the shape of a varying value, which is exactly the
+//    mistake this probe exists to prevent, so it takes several readings and
+//    watches how Remaining and Reset move.
 //
 // 2. THE WEBHOOK CONTRACT. /webhooks is reachable, but registering one needs a
 //    public HTTPS callback we do not have yet. Rather than guess the required

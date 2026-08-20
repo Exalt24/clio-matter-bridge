@@ -109,18 +109,23 @@ export class ClioClient {
     // Pace ourselves rather than relying on 429s to tell us; a 429 is a bug we
     // caused, not a signal to wait for.
     //
-    // MEASURED 2026-08-20, and it contradicts the docs. Clio documents 50
-    // requests/minute. A live trial account reports X-RateLimit-Limit: 600,
-    // Remaining decrementing exactly 1 per call, and Reset holding constant at
-    // a unix instant while the clock runs down. Observed Reset values were all
-    // exact multiples of 60, so the window is one minute aligned to the minute
-    // boundary: 600/min, not 600/hour and not the documented 50/min.
+    // THE LIMIT IS NOT A CONSTANT, and an earlier version of this comment got
+    // that wrong in a way worth recording. Clio documents "50 requests per
+    // minute during peak usage hours" and adds that limits "are increased
+    // during off-peak hours; the amount that they increase may differ per
+    // region". On one account on 2026-08-20, X-RateLimit-Limit read 600 in the
+    // morning and 50 that afternoon. BOTH agree with the documentation. I saw
+    // the 600 first, declared the docs wrong, and hardcoded the pacing to it.
     //
-    // 150ms is 400/min, two thirds of the observed ceiling. Deliberately not
-    // 100ms: the documented figure is far lower than the observed one, so the
-    // headroom covers the case where 600 is a trial-account allowance and a
-    // production firm's account enforces something tighter.
-    this.minIntervalMs = opts.minIntervalMs ?? 150;
+    // So the interval is DERIVED FROM THE HEADER on every response instead of
+    // being hardcoded to either number. The value below is only the opening
+    // guess, used before the first response arrives, and it is deliberately the
+    // conservative end (50/min) because opening fast against a peak window is
+    // how a 429 storm starts.
+    this.minIntervalMs = opts.minIntervalMs ?? 1200;
+    // Re-derive pacing from X-RateLimit-Limit as responses arrive, keeping a
+    // third of the budget as headroom for anything else on the same account.
+    this.adaptFromHeaders = opts.adaptFromHeaders ?? true;
     this._lastRequestAt = 0;
     this.lastRateLimit = null;
     this.onRateLimit = opts.onRateLimit || null;
@@ -158,6 +163,13 @@ export class ClioClient {
       });
 
       this.lastRateLimit = parseRateLimit(res.headers);
+      // Adapt to the window we were actually given. A limit of 600 means 100ms
+      // is safe; a limit of 50 means 1200ms is not optional. Two thirds of the
+      // stated budget leaves room for another process on the same account.
+      if (this.adaptFromHeaders && this.lastRateLimit.limit > 0) {
+        const perMin = this.lastRateLimit.limit * (2 / 3);
+        this.minIntervalMs = Math.max(100, Math.ceil(60000 / perMin));
+      }
       if (this.onRateLimit) this.onRateLimit(this.lastRateLimit);
 
       if (res.status === 429) {

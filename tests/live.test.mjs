@@ -30,9 +30,17 @@ const rl = client.lastRateLimit;
 ok(Number.isFinite(rl.limit) && rl.limit > 0, `X-RateLimit-Limit present (${rl.limit})`);
 ok(Number.isFinite(rl.remaining), `X-RateLimit-Remaining present (${rl.remaining})`);
 ok(rl.remaining <= rl.limit, 'remaining never exceeds the limit');
-// Documented as 50/min. If the live value differs, the docs are wrong and the
-// throttle is calibrated to the wrong number, so assert on what is observed.
-ok(rl.limit !== 50, `observed limit (${rl.limit}) differs from the documented 50, as measured`);
+// The limit VARIES by time of day, exactly as Clio documents: 50/min at peak,
+// higher off-peak. This assertion used to be `rl.limit !== 50`, which encoded my
+// wrong belief that the docs were incorrect, and it duly failed the moment the
+// window moved to peak. Assert the CONTRACT instead: a positive limit, and a
+// client that has paced itself to whatever it was given.
+ok(rl.limit >= 50, `limit is at least the documented peak floor (observed ${rl.limit})`);
+ok(client.minIntervalMs >= 100, `pacing derived from the header (${client.minIntervalMs}ms)`);
+ok(
+  client.minIntervalMs <= Math.ceil(60000 / (rl.limit * (2 / 3))) + 1,
+  'pacing is no slower than the observed budget requires'
+);
 
 // ---------- cursor pagination turns real pages ----------
 // pageSize is deliberately tiny so the seeded record count forces several
