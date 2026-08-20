@@ -1,0 +1,16 @@
+{
+  "name": "clio-matter-bridge",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "description": "Clio Manage v4 integration: OAuth 2.0 with refresh, a paginating rate-limit-aware API client, an idempotent webhook receiver, and LLM intake-to-matter extraction.",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "auth": "node src/authorize.mjs",
+    "serve": "node src/server.mjs",
+    "test": "sh tests/run_all.sh",
+    "test:offline": "node tests/oauth.test.mjs && node tests/client.test.mjs && node tests/webhook.test.mjs && node tests/intake.test.mjs",
+    "test:live": "node tests/live.test.mjs"
+  },
+  "license": "MIT"
+}

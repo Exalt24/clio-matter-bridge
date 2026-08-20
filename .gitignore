@@ -1,0 +1,13 @@
+node_modules/
+.env
+.env.local
+!.env.example
+
+# OAuth tokens are credentials. Never commit.
+.tokens.json
+*.tokens.json
+
+# Live API response captures may contain trial-account data.
+tests/captures/
+
+.vercel
