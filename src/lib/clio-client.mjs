@@ -84,8 +84,20 @@ export function assertFieldsLength(fields) {
 }
 
 export function parseRateLimit(headers) {
+  // Case-insensitive on purpose. A fetch Headers object lowercases for you, so
+  // this looked correct against live traffic, but a PLAIN OBJECT carrying
+  // "X-RateLimit-Limit" returned null and the pacing silently fell back to its
+  // opening guess. Found by the client suite, which was itself only written
+  // after a mutation sweep showed this file had no tests at all.
   const get = (name) => {
-    const raw = typeof headers.get === 'function' ? headers.get(name) : headers[name];
+    let raw;
+    if (headers && typeof headers.get === 'function') {
+      raw = headers.get(name);
+    } else if (headers) {
+      const wanted = name.toLowerCase();
+      const key = Object.keys(headers).find((k) => k.toLowerCase() === wanted);
+      raw = key === undefined ? null : headers[key];
+    }
     if (raw == null) return null;
     const n = Number(raw);
     return Number.isFinite(n) ? n : null;

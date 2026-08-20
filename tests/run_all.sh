@@ -19,6 +19,7 @@ run() {
 }
 
 run "oauth (64 checks)"            node tests/oauth.test.mjs
+run "client (32 checks)"           node tests/client.test.mjs
 run "webhook (72 checks)"          node tests/webhook.test.mjs
 run "confidentiality (47 checks)"  node tests/confidentiality.test.mjs
 run "captured real Clio bytes (25)"  node tests/captured.test.mjs

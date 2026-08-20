@@ -6,7 +6,7 @@
 
 ![Node 20+](https://img.shields.io/badge/node-%3E%3D20-3ddc84)
 ![dependencies none](https://img.shields.io/badge/runtime%20deps-0-3ddc84)
-![tests 233](https://img.shields.io/badge/assertions-233-7fd1ff)
+![tests 265](https://img.shields.io/badge/assertions-265-7fd1ff)
 ![Clio API v4](https://img.shields.io/badge/Clio%20Manage-API%20v4-ffd166)
 ![license MIT](https://img.shields.io/badge/license-MIT-blue)
 
@@ -83,11 +83,12 @@ Disabling the allowlist in a mutation test did not silently pass: the secondary 
 
 ## Tests
 
-**233 assertions across five suites.** `tests/run_all.sh` runs them all, then **breaks three guards on purpose** and asserts the relevant suite goes red, because a suite that cannot fail is not a suite.
+**265 assertions across six suites.** `tests/run_all.sh` runs them all, then **breaks three guards on purpose** and asserts the relevant suite goes red, because a suite that cannot fail is not a suite.
 
 | Suite | Checks | Covers |
 |---|---|---|
 | `oauth.test.mjs` | 64 | regions, redirect rule, token normalisation, expiry, wire format |
+| `client.test.mjs` | 32 | fields builder + its 1000-char cap, header parsing, adaptive pacing |
 | `webhook.test.mjs` | 72 | signature, replay, idempotency, dispatch, error propagation |
 | `confidentiality.test.mjs` | 47 | allowlist, identifier detection, pseudonyms, audit record |
 | `captured.test.mjs` | 25 | the real bytes Clio sent |
@@ -96,6 +97,8 @@ Disabling the allowlist in a mutation test did not silently pass: the secondary 
 One test here was **found to be passing for the wrong reason.** The redirect-URI guard rejects `localhost`, and the assertion matched `/localhost/`. Deleting the guard left the suite green at 64/64, because the generic fallback error echoes the offending URI back and therefore contains the word. The assertion now matches the phrase unique to the dedicated branch, and the same deletion produces failures.
 
 That is why the mutation controls exist. A green suite is evidence only if you have watched it go red.
+
+A later sweep broke **ten** guards one at a time and asserted the relevant suite went red for each. Nine had teeth; the tenth, the `fields` length cap, **stayed green**, because it was enforced in code and asserted nowhere. `package.json` also referenced a `tests/client.test.mjs` that did not exist, so `test:offline` had been running one fewer file than it claimed. Writing that suite immediately found a second latent bug: `parseRateLimit` did a case-sensitive lookup, so a plain object carrying `X-RateLimit-Limit` returned null and pacing silently fell back to its opening guess. Both fixed. **10/10 guards now proven to have teeth.**
 
 ## Layout
 
