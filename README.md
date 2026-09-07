@@ -2,7 +2,7 @@
 
 **A Clio Manage integration built by measuring the platform rather than assuming it.** OAuth 2.0 with refresh, a rate-limit-aware paginating client, a webhook receiver verified against real deliveries, and a confidentiality boundary for anything that reaches a language model.
 
-![Terminal showing all five test suites and three mutation controls passing, ending in ALL SUITES PASS](assets/tests.gif)
+![Terminal showing all six test suites and three mutation controls passing, ending in ALL SUITES PASS](assets/tests.gif)
 
 ![Node 20+](https://img.shields.io/badge/node-%3E%3D20-3ddc84)
 ![dependencies none](https://img.shields.io/badge/runtime%20deps-0-3ddc84)
