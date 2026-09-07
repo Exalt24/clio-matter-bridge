@@ -1,0 +1,12 @@
+# These directories are for local development and CI only, never the deployed
+# receiver: `src/server.mjs` is the localhost + tunnel version used for
+# capturing raw Clio headers, and `tests/` is Node's test runner, not app code.
+# api/clio-webhook.js is self-contained (imports nothing from src/), so
+# excluding src/ from the upload only stops Vercel's zero-config Node builder
+# from picking src/server.mjs as the "root entrypoint" for every unmatched
+# route. That auto-detection is what turned a plain browser GET to "/" into
+# FUNCTION_INVOCATION_FAILED: server.mjs calls mkdirSync('tests/captures') at
+# module load time, and a serverless function's filesystem is read-only
+# outside /tmp, so the module crashed before it ever reached a handler.
+src/
+tests/
