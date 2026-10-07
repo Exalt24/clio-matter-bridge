@@ -21,7 +21,7 @@ npm test                  # every suite, plus the mutation controls
 
 ## Status, stated precisely
 
-Built and tested against a live Clio Manage **developer trial** account. Not running in production, not used by a law firm, and containing no real client data. The only records in it are synthetic ones created by `src/seed.mjs`.
+Built and tested against a live Clio Manage **developer trial** account. Not running in production, not used by a law firm, and containing no real client data. The only records in it are synthetic ones created by `src/seed.mjs`. The trial expired on 2026-08-27, so the live suite (25 of the 265 assertions) needs your own Clio account; the other 240 run offline with no account.
 
 ## Why this exists
 
@@ -46,7 +46,7 @@ A receiver was deployed, a subscription registered against it, and real events t
 
 ![Terminal log showing the handshake secret echoed back, the subscription moving from pending to enabled, and the signature header identified as x-hook-signature](assets/webhook-verified.png)
 
-- The handshake arrives as `x-hook-secret: <uuid>` with body `{"data":{"webhook_id":N}}`. Echo the header back with a 200 and the subscription moves `pending` → `enabled`.
+- The handshake arrives as `x-hook-secret: <uuid>` with body `{"data":{"webhook_id":N}}`. Echo the header back with a 200 and the subscription moves from `pending` to `enabled`.
 - Deliveries carry `x-hook-signature`, an HMAC-SHA256 of the **raw** body keyed on the handshake secret.
 - Subscriptions carry `expires_at` roughly **three days** out and must be renewed.
 - Point a subscription at a **stable alias**, never an immutable deployment URL, or the next deploy orphans it.
