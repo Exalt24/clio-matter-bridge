@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": false,
   "type": "module",
-  "description": "Clio Manage v4 integration: OAuth 2.0 with refresh, a paginating rate-limit-aware API client, an idempotent webhook receiver, and LLM intake-to-matter extraction.",
+  "description": "Clio Manage v4 integration: OAuth 2.0 with refresh, a paginating rate-limit-aware API client, an idempotent webhook receiver, and a deny-by-default confidentiality boundary for model-bound data.",
   "engines": {
     "node": ">=20"
   },

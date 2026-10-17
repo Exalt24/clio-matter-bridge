@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Exalt24/clio-matter-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/Exalt24/clio-matter-bridge/actions/workflows/ci.yml)
 
-**A Clio Manage integration built by measuring the platform rather than assuming it.** OAuth 2.0 with refresh, a rate-limit-aware paginating client, a webhook receiver verified against real deliveries, and a confidentiality boundary for anything that reaches a language model.
+**Clio Manage integration measured against the real API: OAuth 2.0, verified webhooks, a deny-by-default model boundary.** It also has a token refresh grant, a rate-limit-aware paginating client, and a webhook receiver checked against real deliveries.
 
 ![Terminal replay of npm test: five offline suites pass, the live suite is skipped without a Clio account, three mutation controls pass, ending in ALL SUITES PASS](assets/tests.gif)
 
@@ -96,7 +96,9 @@ One test here was **found to be passing for the wrong reason.** The redirect-URI
 
 That is why the mutation controls exist. A green suite is evidence only if you have watched it go red.
 
-A later sweep broke **ten** guards one at a time and asserted the relevant suite went red for each. Nine had teeth; the tenth, the `fields` length cap, **stayed green**, because it was enforced in code and asserted nowhere. `package.json` also referenced a `tests/client.test.mjs` that did not exist, so `test:offline` had been running one fewer file than it claimed. Writing that suite immediately found a second latent bug: `parseRateLimit` did a case-sensitive lookup, so a plain object carrying `X-RateLimit-Limit` returned null and pacing silently fell back to its opening guess. Both fixed. **10/10 guards now proven to have teeth.**
+A later sweep broke **ten** guards one at a time by hand and asserted the relevant suite went red for each. Nine had teeth; the tenth, the `fields` length cap, **stayed green**, because it was enforced in code and asserted nowhere. `package.json` also referenced a `tests/client.test.mjs` that did not exist, so `test:offline` had been running one fewer file than it claimed. Writing that suite immediately found a second latent bug: `parseRateLimit` did a case-sensitive lookup, so a plain object carrying `X-RateLimit-Limit` returned null and pacing silently fell back to its opening guess. Both fixed.
+
+That ten guard sweep is not committed as a script, so it cannot be re-run from the repo. What `npm test` re-runs is three of the controls: the redirect guard, the webhook signature compare and the confidentiality allowlist. CI runs only the five offline suites (`npm run test:offline`), not the mutation controls. The controls need Python; without it `tests/run_all.sh` now fails instead of printing a skip, and it also fails if a target string has moved.
 
 ## Layout
 
@@ -118,6 +120,7 @@ api/clio-webhook.js          deployable always-on receiver
 
 ## Not done
 
+- **No model is called anywhere in this repo.** `prepareForModel` is the checkpoint a language model call would go through, and it is tested; there is no LLM client and no intake-to-matter extraction behind it.
 - **Clio administration.** This is API work. Configuring matters, contacts, calendaring, tasks, documents, billing and intake inside Clio is a separate skill, and no amount of API work substitutes for it.
 - **Conflict-of-interest checking on intake**, the workflow that is genuinely harder in law than elsewhere. Clio exposes a conflict-check scope in global search; this repo does not use it yet.
 - **Renewal automation** for the roughly three-day webhook expiry.

@@ -38,11 +38,28 @@ fi
 
 # Mutation controls. A suite that cannot go red is not a suite. Each of these
 # breaks one guard, asserts the relevant suite FAILS, and restores the file.
+#
+# The controls need Python to rewrite the file. A machine without it must not
+# print a quiet SKIP and report ALL SUITES PASS with nothing proven, so a missing
+# python, or a target string that has moved, is a FAILURE.
+PY=""
+for candidate in python3 python; do
+  if command -v "$candidate" >/dev/null 2>&1 && "$candidate" -c "import sys" >/dev/null 2>&1; then
+    PY="$candidate"
+    break
+  fi
+done
+
 mutate() {
   label="$1"; file="$2"; suite="$3"; find_str="$4"; repl="$5"
   printf "%-40s " "mutation: $label"
+  if [ -z "$PY" ]; then
+    echo "FAIL (python not found; the mutation controls cannot run)"
+    fail=1
+    return
+  fi
   cp "$file" "$file.mutbak"
-  python -c "
+  "$PY" -c "
 import sys
 p = sys.argv[1]
 s = open(p, encoding='utf8').read()
@@ -50,7 +67,7 @@ old, new = sys.argv[2], sys.argv[3]
 if old not in s:
     sys.exit('mutation target missing')
 open(p, 'w', encoding='utf8').write(s.replace(old, new))
-" "$file" "$find_str" "$repl" 2>/dev/null || { echo "SKIP (target moved)"; rm -f "$file.mutbak"; return; }
+" "$file" "$find_str" "$repl" 2>/dev/null || { echo "FAIL (target moved; the control no longer breaks anything)"; rm -f "$file.mutbak"; fail=1; return; }
   if node "$suite" >/dev/null 2>&1; then
     echo "FAIL (suite stayed green with the guard broken)"
     fail=1
