@@ -1,14 +1,12 @@
 # clio-matter-bridge
 
+[![CI](https://github.com/Exalt24/clio-matter-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/Exalt24/clio-matter-bridge/actions/workflows/ci.yml)
+
 **A Clio Manage integration built by measuring the platform rather than assuming it.** OAuth 2.0 with refresh, a rate-limit-aware paginating client, a webhook receiver verified against real deliveries, and a confidentiality boundary for anything that reaches a language model.
 
-![Terminal showing all six test suites and three mutation controls passing, ending in ALL SUITES PASS](assets/tests.gif)
+![Terminal replay of npm test: five offline suites pass, the live suite is skipped without a Clio account, three mutation controls pass, ending in ALL SUITES PASS](assets/tests.gif)
 
-![Node 20+](https://img.shields.io/badge/node-%3E%3D20-3ddc84)
-![dependencies none](https://img.shields.io/badge/runtime%20deps-0-3ddc84)
-![tests 265](https://img.shields.io/badge/assertions-265-7fd1ff)
-![Clio API v4](https://img.shields.io/badge/Clio%20Manage-API%20v4-ffd166)
-![license MIT](https://img.shields.io/badge/license-MIT-blue)
+*A clean clone running `npm test`: five offline suites and three mutation controls pass, and the live suite skips because it needs your own Clio account. The screen is replayed from the real output of that run.*
 
 Zero runtime dependencies. Node 20+ built-ins only, so it clones and runs with no install step.
 
