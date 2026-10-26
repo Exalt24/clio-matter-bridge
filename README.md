@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/Exalt24/clio-matter-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/Exalt24/clio-matter-bridge/actions/workflows/ci.yml)
 
-**Clio Manage integration measured against the real API: OAuth 2.0, verified webhooks, a deny-by-default model boundary.** It also has a token refresh grant, a rate-limit-aware paginating client, and a webhook receiver checked against real deliveries.
+**Clio Manage integration measured against the real API: OAuth 2.0, a verified webhook receiver, a deny-by-default model boundary.** It also has a token refresh grant, a rate-limit-aware paginating client, and a webhook receiver checked against real deliveries.
 
 ![Terminal replay of npm test: five offline suites pass, the live suite is skipped without a Clio account, three mutation controls pass, ending in ALL SUITES PASS](assets/tests.gif)
 
@@ -25,13 +25,13 @@ Built and tested against a live Clio Manage **developer trial** account. Not run
 
 Some of Clio's documentation is missing or hard to find, and several of my own assumptions were wrong. Both kinds of error were found by hitting the real API rather than reading about it. One correction runs the other way, and it is in the table below: I briefly believed the documented rate limit was wrong, and it was not.
 
-![Terminal output showing five consecutive API reads reporting X-RateLimit-Limit of 600, an off-peak reading that later dropped to 50 at peak](assets/measured-vs-documented.png)
+![Terminal output showing five consecutive API reads reporting X-RateLimit-Limit of 600, an off-peak reading of 600; the 50 at peak is from the docs](assets/measured-vs-documented.png)
 
 | Behaviour | Documented | Measured |
 |---|---|---|
-| Rate limit | 50/min at peak, "increased during off-peak hours" | **varies**: observed 600 in the morning and 50 the same afternoon. The docs were right; read the header |
+| Rate limit | 50/min at peak, "increased during off-peak hours" | **varies**: observed 600 off-peak (the saved screenshot); a 50 afternoon reading was seen once and not saved. The docs were right; read the header |
 | Webhook contract | the docs page 404s | reverse-engineered from validation errors, then proven end to end |
-| Redirect URI | not stated | the portal rejects `localhost`; requires `https` or `http://127.0.0.1` |
+| Redirect URI (measured 2026-08-20, output not kept) | not stated | the portal rejects `localhost`; requires `https` or `http://127.0.0.1` |
 | Offset pagination | 10,000-record ceiling | confirmed, 422 past it, so paging here is cursor-only |
 | `fields` omitted | "minimal default set" | confirmed: `description` is simply absent unless asked for |
 | Manage OAuth host | ambiguous vs Platform | `app.clio.com/oauth/*`; `auth.api.clio.com` is a different product |
@@ -98,7 +98,7 @@ That is why the mutation controls exist. A green suite is evidence only if you h
 
 A later sweep broke **ten** guards one at a time by hand and asserted the relevant suite went red for each. Nine had teeth; the tenth, the `fields` length cap, **stayed green**, because it was enforced in code and asserted nowhere. `package.json` also referenced a `tests/client.test.mjs` that did not exist, so `test:offline` had been running one fewer file than it claimed. Writing that suite immediately found a second latent bug: `parseRateLimit` did a case-sensitive lookup, so a plain object carrying `X-RateLimit-Limit` returned null and pacing silently fell back to its opening guess. Both fixed.
 
-That ten guard sweep is not committed as a script, so it cannot be re-run from the repo. What `npm test` re-runs is three of the controls: the redirect guard, the webhook signature compare and the confidentiality allowlist. CI runs only the five offline suites (`npm run test:offline`), not the mutation controls. The controls need Python; without it `tests/run_all.sh` now fails instead of printing a skip, and it also fails if a target string has moved.
+That ten guard sweep (commit e6bc4d5) is not committed as a script, so it cannot be re-run from the repo. What `npm test` re-runs is three of the controls: the redirect guard, the webhook signature compare and the confidentiality allowlist. CI runs only the five offline suites (`npm run test:offline`), not the mutation controls. The controls need Python; without it `tests/run_all.sh` now fails instead of printing a skip, and it also fails if a target string has moved.
 
 ## Layout
 
@@ -113,7 +113,7 @@ src/authorize.mjs            one-shot local OAuth callback server
 src/probe.mjs, probe2.mjs    live reconnaissance; how the findings above were made
 src/seed.mjs                 synthetic records, with a refusal guard and --undo
 src/server.mjs               local receiver that logs every header verbatim
-api/clio-webhook.js          deployable always-on receiver
+api/clio-webhook.js          evidence logger on a serverless host: echoes the handshake secret and logs it, logs the headers, always answers 200 and does not reject a bad signature. Signature checks, replay and idempotency live in src/lib/webhook.mjs, used by the local receiver src/server.mjs
 ```
 
 `src/seed.mjs` **refuses to run** against an account holding more records than it creates, because the cost of being wrong about which account you are pointed at is asymmetric. `--undo` deletes by id only what it created.
