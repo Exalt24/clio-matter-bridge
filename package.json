@@ -11,7 +11,7 @@
     "auth": "node src/authorize.mjs",
     "serve": "node src/server.mjs",
     "test": "sh tests/run_all.sh",
-    "test:offline": "node tests/oauth.test.mjs && node tests/client.test.mjs && node tests/webhook.test.mjs && node tests/confidentiality.test.mjs && node tests/captured.test.mjs",
+    "test:offline": "node tests/oauth.test.mjs && node tests/client.test.mjs && node tests/webhook.test.mjs && node tests/confidentiality.test.mjs && node tests/captured.test.mjs && node tests/function.test.mjs",
     "test:live": "node tests/live.test.mjs"
   },
   "license": "MIT"

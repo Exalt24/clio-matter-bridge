@@ -19,7 +19,7 @@ npm test                  # every suite, plus the mutation controls
 
 ## Status, stated precisely
 
-Built and tested against a live Clio Manage **developer trial** account. Not running in production, not used by a law firm, and containing no real client data. The only records in it are synthetic ones created by `src/seed.mjs`. The trial expired on 2026-08-27, so the live suite (25 of the 265 assertions) needs your own Clio account; the other 240 run offline with no account.
+Built and tested against a live Clio Manage **developer trial** account. Not running in production, not used by a law firm, and containing no real client data. The only records in it are synthetic ones created by `src/seed.mjs`. The trial expired on 2026-08-27, so the live suite (25 of the 265 assertions) needs your own Clio account, and `npm test` reports it as FAILED when a stale `.tokens.json` is present; the other 240 run offline with no account, and so do the 12 on the deployed function.
 
 ## Why this exists
 
@@ -81,7 +81,7 @@ Disabling the allowlist in a mutation test did not silently pass: the secondary 
 
 ## Tests
 
-**265 assertions across six suites.** `tests/run_all.sh` runs them all, then **breaks three guards on purpose** and asserts the relevant suite goes red, because a suite that cannot fail is not a suite.
+**265 assertions across six suites, plus 12 on the deployed function.** `tests/run_all.sh` runs them all, then **breaks five guards on purpose** and asserts the relevant suite goes red, because a suite that cannot fail is not a suite.
 
 | Suite | Checks | Covers |
 |---|---|---|
@@ -90,6 +90,7 @@ Disabling the allowlist in a mutation test did not silently pass: the secondary 
 | `webhook.test.mjs` | 72 | signature, replay, idempotency, dispatch, error propagation |
 | `confidentiality.test.mjs` | 47 | allowlist, identifier detection, pseudonyms, audit record |
 | `captured.test.mjs` | 25 | the real bytes Clio sent |
+| `function.test.mjs` | 12 | the deployed function: the handshake is echoed, and no secret or signature value reaches the log |
 | `live.test.mjs` | 25 | live API: pagination, fields, filtering, and the refresh grant |
 
 One test here was **found to be passing for the wrong reason.** The redirect-URI guard rejects `localhost`, and the assertion matched `/localhost/`. Deleting the guard left the suite green at 64/64, because the generic fallback error echoes the offending URI back and therefore contains the word. The assertion now matches the phrase unique to the dedicated branch, and the same deletion produces failures.
@@ -98,7 +99,7 @@ That is why the mutation controls exist. A green suite is evidence only if you h
 
 A later sweep broke **ten** guards one at a time by hand and asserted the relevant suite went red for each. Nine had teeth; the tenth, the `fields` length cap, **stayed green**, because it was enforced in code and asserted nowhere. `package.json` also referenced a `tests/client.test.mjs` that did not exist, so `test:offline` had been running one fewer file than it claimed. Writing that suite immediately found a second latent bug: `parseRateLimit` did a case-sensitive lookup, so a plain object carrying `X-RateLimit-Limit` returned null and pacing silently fell back to its opening guess. Both fixed.
 
-That ten guard sweep (commit e6bc4d5) is not committed as a script, so it cannot be re-run from the repo. What `npm test` re-runs is three of the controls: the redirect guard, the webhook signature compare and the confidentiality allowlist. CI runs only the five offline suites (`npm run test:offline`), not the mutation controls. The controls need Python; without it `tests/run_all.sh` now fails instead of printing a skip, and it also fails if a target string has moved.
+That ten guard sweep (commit e6bc4d5) is not committed as a script, so it cannot be re-run from the repo. What `npm test` re-runs is five of the controls: the redirect guard, the webhook signature compare, the confidentiality allowlist and the two log redactions of the deployed function. CI runs only the six offline suites (`npm run test:offline`), not the mutation controls. The controls need Python; without it `tests/run_all.sh` now fails instead of printing a skip, and it also fails if a target string has moved.
 
 ## Layout
 
@@ -113,7 +114,7 @@ src/authorize.mjs            one-shot local OAuth callback server
 src/probe.mjs, probe2.mjs    live reconnaissance; how the findings above were made
 src/seed.mjs                 synthetic records, with a refusal guard and --undo
 src/server.mjs               local receiver that logs every header verbatim
-api/clio-webhook.js          evidence logger on a serverless host: echoes the handshake secret and logs it, logs the headers, always answers 200 and does not reject a bad signature. Signature checks, replay and idempotency live in src/lib/webhook.mjs, used by the local receiver src/server.mjs
+api/clio-webhook.js          evidence logger on a serverless host: echoes the handshake secret, logs the headers with secret and signature values reduced to a length and a hash (the handshake secret is written out only when `CLIO_LOG_HANDSHAKE_SECRET=1` is set on purpose), always answers 200 and does not reject a bad signature. Signature checks, replay and idempotency live in src/lib/webhook.mjs, used by the local receiver src/server.mjs
 ```
 
 `src/seed.mjs` **refuses to run** against an account holding more records than it creates, because the cost of being wrong about which account you are pointed at is asymmetric. `--undo` deletes by id only what it created.

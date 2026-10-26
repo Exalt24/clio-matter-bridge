@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 
 // Always-on Clio webhook receiver, deployed as a serverless function.
 //
@@ -30,6 +30,18 @@ function readRaw(req) {
   });
 }
 
+// A secret or a signature never goes into the log stream in the clear: the log
+// keeps its length and a short hash, which is enough to see that a header
+// arrived and whether two deliveries carried the same value. The one exception
+// is the handshake secret, which the owner needs once to set CLIO_HOOK_SECRET;
+// it is written out only when CLIO_LOG_HANDSHAKE_SECRET=1 is set on purpose.
+export function fingerprint(value) {
+  const text = Array.isArray(value) ? value.join(',') : String(value);
+  return `<redacted length=${text.length} sha256=${createHash('sha256').update(text).digest('hex').slice(0, 8)}>`;
+}
+
+const SENSITIVE_HEADER = /secret|sign|hmac|digest|authorization|cookie/i;
+
 function headerValue(headers, name) {
   const wanted = name.toLowerCase();
   for (const key of Object.keys(headers || {})) {
@@ -55,7 +67,7 @@ export default async function handler(req, res) {
   // The evidence. One line of JSON so it is greppable in the log stream.
   const notable = {};
   for (const [k, v] of Object.entries(req.headers || {})) {
-    if (/hook|sign|secret|clio|hmac|timestamp|delivery|event|digest/i.test(k)) notable[k] = v;
+    if (/hook|sign|secret|clio|hmac|timestamp|delivery|event|digest/i.test(k)) notable[k] = SENSITIVE_HEADER.test(k) ? fingerprint(v) : v;
   }
   console.log(
     'CLIO_INBOUND ' +
@@ -74,7 +86,11 @@ export default async function handler(req, res) {
   // freshly created webhook returns status "pending".
   const handshake = headerValue(req.headers, 'x-hook-secret');
   if (handshake) {
-    console.log(`CLIO_HANDSHAKE_SECRET ${handshake}`);
+    console.log(
+      process.env.CLIO_LOG_HANDSHAKE_SECRET === '1'
+        ? `CLIO_HANDSHAKE_SECRET ${handshake}`
+        : `CLIO_HANDSHAKE_SECRET ${fingerprint(handshake)}`
+    );
     res.setHeader('x-hook-secret', handshake);
     res.status(200).end();
     return;

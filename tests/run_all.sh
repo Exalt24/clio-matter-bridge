@@ -23,6 +23,7 @@ run "client (32 checks)"           node tests/client.test.mjs
 run "webhook (72 checks)"          node tests/webhook.test.mjs
 run "confidentiality (47 checks)"  node tests/confidentiality.test.mjs
 run "captured real Clio bytes (25)"  node tests/captured.test.mjs
+run "deployed function logging (12)"  node tests/function.test.mjs
 
 printf "%-40s " "live against real Clio (25 checks)"
 if [ -f .tokens.json ]; then
@@ -91,6 +92,16 @@ mutate "confidentiality allowlist" \
   src/lib/confidentiality.mjs tests/confidentiality.test.mjs \
   "    if (allowlist.includes(key)) kept[key] = value;" \
   "    if (true) kept[key] = value;"
+
+mutate "secret headers logged in the clear" \
+  api/clio-webhook.js tests/function.test.mjs \
+  "SENSITIVE_HEADER.test(k) ? fingerprint(v) : v" \
+  "v"
+
+mutate "handshake secret logged in the clear" \
+  api/clio-webhook.js tests/function.test.mjs \
+  "process.env.CLIO_LOG_HANDSHAKE_SECRET === '1'" \
+  "true"
 
 echo
 if [ "$fail" -eq 0 ]; then
