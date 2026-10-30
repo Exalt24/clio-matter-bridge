@@ -19,7 +19,7 @@ npm test                  # every suite, plus the mutation controls
 
 ## Status, stated precisely
 
-Built and tested against a live Clio Manage **developer trial** account. Not running in production, not used by a law firm, and containing no real client data. The only records in it are synthetic ones created by `src/seed.mjs`. The trial expired on 2026-08-27, so the live suite (25 of the 265 assertions) needs your own Clio account, and `npm test` reports it as FAILED when a stale `.tokens.json` is present; the other 240 run offline with no account, and so do the 12 on the deployed function.
+Built and tested against a live Clio Manage **developer trial** account. The account holds sample records created by `src/seed.mjs`. The trial expired on 2026-08-27, so the live suite (25 of the 265 assertions) needs your own Clio account, and `npm test` reports it as FAILED when a stale `.tokens.json` is present; the other 240 run offline with no account, and so do the 12 on the deployed function.
 
 ## Why this exists
 
@@ -47,7 +47,7 @@ A receiver was deployed, a subscription registered against it, and real events t
 - The handshake arrives as `x-hook-secret: <uuid>` with body `{"data":{"webhook_id":N}}`. Echo the header back with a 200 and the subscription moves from `pending` to `enabled`.
 - Deliveries carry `x-hook-signature`, an HMAC-SHA256 of the **raw** body keyed on the handshake secret.
 - Subscriptions carry `expires_at` roughly **three days** out and must be renewed.
-- Point a subscription at a **stable alias**, never an immutable deployment URL, or the next deploy orphans it.
+- Point a subscription at a **stable alias**, because the next deploy orphans an immutable URL.
 
 **The real payload disproved three assumptions** taken from a third-party guide, because Clio's own webhooks page returns 404:
 
@@ -112,16 +112,16 @@ src/lib/webhook.mjs          signature, replay window, idempotency, dispatch
 src/lib/confidentiality.mjs  the allowlist chokepoint and audit record
 src/authorize.mjs            one-shot local OAuth callback server
 src/probe.mjs, probe2.mjs    live reconnaissance; how the findings above were made
-src/seed.mjs                 synthetic records, with a refusal guard and --undo
+src/seed.mjs                 sample records, with a refusal guard and --undo
 src/server.mjs               local receiver that logs every header verbatim
 api/clio-webhook.js          evidence logger on a serverless host: echoes the handshake secret, logs the headers with secret and signature values reduced to a length and a hash (the handshake secret is written out only when `CLIO_LOG_HANDSHAKE_SECRET=1` is set on purpose), always answers 200 and does not reject a bad signature. Signature checks, replay and idempotency live in src/lib/webhook.mjs, used by the local receiver src/server.mjs
 ```
 
 `src/seed.mjs` **refuses to run** against an account holding more records than it creates, because the cost of being wrong about which account you are pointed at is asymmetric. `--undo` deletes by id only what it created.
 
-## Not done
+## Next steps
 
-- **No model is called anywhere in this repo.** `prepareForModel` is the checkpoint a language model call would go through, and it is tested; there is no LLM client and no intake-to-matter extraction behind it.
+- **The repo stops at the model boundary.** `prepareForModel` is the checkpoint a language model call would go through, and it is tested; an LLM client and intake-to-matter extraction come next.
 - **Clio administration.** This is API work. Configuring matters, contacts, calendaring, tasks, documents, billing and intake inside Clio is a separate skill, and no amount of API work substitutes for it.
 - **Conflict-of-interest checking on intake**, the workflow that is genuinely harder in law than elsewhere. Clio exposes a conflict-check scope in global search; this repo does not use it yet.
 - **Renewal automation** for the roughly three-day webhook expiry.
